@@ -1,0 +1,7 @@
+Segmentation/
+Localization/
+CS585-Cells/
+CS585-BatImages/
+*.zip
+__pycache__
+.DS_Store
