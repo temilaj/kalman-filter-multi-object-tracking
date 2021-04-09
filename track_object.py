@@ -32,7 +32,7 @@ def track_object(images, localizations):
 		centers = localizations[i]
 		if (len(centers) > 0):
 			# Track object with the Kalman Filter
-			tracker.Update(centers)
+			tracker.update_tracks(centers)
 
 			# Draw tracklines of identified objects
 			for j in range(len(tracker.tracks)):

@@ -5,7 +5,7 @@ from scipy.optimize import linear_sum_assignment
 
 class Track(object):
     def __init__(self, prediction, trackIdCount):
-        self.track_id = trackIdCount  # identification of each track object
+        self.track_id = trackIdCount 
         self.KF = KalmanFilter()  # KF instance to track this object
         self.prediction = np.asarray(prediction)  # predicted centroids (x,y)
         self.skipped_frames = 0  # number of frames skipped undetected
@@ -22,34 +22,16 @@ class Tracker(object):
         self.tracks = []
         self.trackIdCount = trackIdCount
 
-    def Update(self, detections):
-        """Update tracks vector using following steps:
-            - Create tracks if no tracks vector found
-            - Calculate cost using sum of square distance
-              between predicted vs detected centroids
-            - Using Hungarian Algorithm assign the correct
-              detected measurements to predicted tracks
-              https://en.wikipedia.org/wiki/Hungarian_algorithm
-            - Identify tracks with no assignment, if any
-            - If tracks are not detected for long time, remove them
-            - Now look for un_assigned detects
-            - Start new tracks
-            - Update KalmanFilter state, lastResults and tracks trace
-        Args:
-            detections: detected centroids of object to be tracked
-        Return:
-            None
-        """
-
-        # Create tracks if no tracks vector found
-        if (len(self.tracks) == 0):
-            for i in range(len(detections)):
+    def create_tracks(self, detections):
+        for i in range(len(detections)):
                 track = Track(detections[i], self.trackIdCount)
                 self.trackIdCount += 1
                 self.tracks.append(track)
 
-        # Calculate cost using sum of square distance between
-        # predicted vs detected centroids
+    def update_tracks(self, detections):
+        if (len(self.tracks) == 0):
+            self.create_tracks(detections)
+
         N = len(self.tracks)
         M = len(detections)
         cost = np.zeros(shape=(N, M))   # Cost matrix
@@ -63,10 +45,9 @@ class Tracker(object):
                 except:
                     pass
 
-        # Let's average the squared ERROR
+        # average the squared error
         cost = (0.5) * cost
-        # Using Hungarian Algorithm assign the correct detected measurements
-        # to predicted tracks
+        # assign the correct detected measurements to predicted tracks using Hungarian Algorithm 
         assignment = []
         for _ in range(N):
             assignment.append(-1)
@@ -87,12 +68,12 @@ class Tracker(object):
             else:
                 self.tracks[i].skipped_frames += 1
 
-        # If tracks are not detected for long time, remove them
+        # remove undetected tracks
         del_tracks = []
         for i in range(len(self.tracks)):
             if (self.tracks[i].skipped_frames > self.max_frames_to_skip):
                 del_tracks.append(i)
-        if len(del_tracks) > 0:  # only when skipped frame exceeds max
+        if len(del_tracks) > 0:
             for id in del_tracks:
                 if id < len(self.tracks):
                     del self.tracks[id]
@@ -100,7 +81,6 @@ class Tracker(object):
                 else:
                     print("ERROR: id is greater than length of tracks")
 
-        # Now look for un_assigned detects
         un_assigned_detects = []
         for i in range(len(detections)):
                 if i not in assignment:
@@ -116,14 +96,14 @@ class Tracker(object):
 
         # Update KalmanFilter state, lastResults and tracks trace
         for i in range(len(assignment)):
-            self.tracks[i].KF.predict()
+            self.tracks[i].KF.predict_state_vector()
 
             if(assignment[i] != -1):
                 self.tracks[i].skipped_frames = 0
-                self.tracks[i].prediction = self.tracks[i].KF.correct(
+                self.tracks[i].prediction = self.tracks[i].KF.correct_state_vector(
                                             detections[assignment[i]], 1)
             else:
-                self.tracks[i].prediction = self.tracks[i].KF.correct(
+                self.tracks[i].prediction = self.tracks[i].KF.correct_state_vector(
                                             np.array([[0], [0]]), 0)
 
             if(len(self.tracks[i].trace) > self.max_trace_length):
